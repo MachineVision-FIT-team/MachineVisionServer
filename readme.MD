@@ -1,6 +1,8 @@
 # Setting Up a Virtual Environment with venv and Django
 
-## Creating a Virtual Environment
+## Creating a Virtual Environment (BUILT ON PYTHON3.11!)
+
+### Preferrably dont create environment manually but use your IDE's tools.
 
 ### Windows
 

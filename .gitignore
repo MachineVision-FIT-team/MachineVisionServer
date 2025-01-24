@@ -2,3 +2,31 @@
 *
 .venv/
 __pycache__/
+
+# Django #
+*.log
+*.pot
+*.pyc
+__pycache__
+db.sqlite3
+media
+
+# Migrations
+**/migrations/**
+!**/migrations
+!**/migrations/__init__.py
+
+# Environments 
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE #
+.idea
+.vscode
+*.swp
+*.swo
