@@ -1,5 +1,4 @@
 # Created by venv; see https://docs.python.org/3/library/venv.html
-*
 ../venv/
 .venv/
 __pycache__/
@@ -16,6 +15,7 @@ __pycache__
 db.sqlite3
 media
 */__pycache__
+nlp-server-django/staticfiles/*
 
 # Migrations
 **/migrations/**

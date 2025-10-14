@@ -1,0 +1,26 @@
+services:
+  backend:
+    build: ./nlp-server-django
+    container_name: nlp-backend
+    ports:
+      - '8080:8000'
+    volumes:
+      - ./nlp-server-django:/app
+      - static-volume:/app/staticfiles
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    restart: unless-stopped
+    stdin_open: true # Allows interactive input
+    tty: true # Allocates pseudo-TTY for interactive prompts
+
+  redis:
+    image: redis:7-alpine
+    container_name: nlp-redis
+    ports:
+      - '6379:6379'
+    restart: unless-stopped
+
+volumes:
+  static-volume:
