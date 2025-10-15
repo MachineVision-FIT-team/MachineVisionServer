@@ -3,7 +3,7 @@ services:
     build: ./nlp-server-django
     container_name: nlp-backend
     ports:
-      - '8080:8000'
+      - '8000:8000'
     volumes:
       - ./nlp-server-django:/app
       - static-volume:/app/staticfiles

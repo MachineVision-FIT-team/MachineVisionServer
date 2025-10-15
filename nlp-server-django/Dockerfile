@@ -1,4 +1,3 @@
-# Use Python 3.11 slim image
 FROM python:3.11-slim
 
 # Set environment variables
@@ -23,11 +22,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copy project files
+# Copy project files and scripts
 COPY . .
-
-# Make entrypoint executable
-RUN chmod +x superuser.sh
 
 # Create directories
 RUN mkdir -p /app/staticfiles /app/data
@@ -35,8 +31,9 @@ RUN mkdir -p /app/staticfiles /app/data
 # Expose port 8000
 EXPOSE 8000
 
+
 # Entrypoint handles setup
-ENTRYPOINT ["/bin/bash", "./superuser.sh"]
+ENTRYPOINT ["/bin/bash", "./entrypoint.sh"]
 
 # CMD starts the server
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
