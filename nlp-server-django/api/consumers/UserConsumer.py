@@ -13,12 +13,15 @@ from ..websocket_handling.error_handler import ClientError
 
 
 class UserConsumer(ApiConsumer):
+
     async def connect(self):
         await super().connect()
         self.room_manager = RoomManager(self.redis_client)
-        self.transcriber = SileroTranscriber()
-        self.audio_processor = AudioProcessor(transcriber=self.transcriber)
         self.text_analyzer = TextAnalyzer()
+
+        # Don't initialize transcriber until needed
+        self.transcriber = None
+        self.audio_processor = None
 
     async def disconnect(self, close_code: WebSocketCloseCodes):
         await self.room_manager.clear_member_from_all_rooms(self.channel_name)
@@ -90,6 +93,11 @@ class UserConsumer(ApiConsumer):
 
     async def _handle_transcribe_audio(self):
         try:
+            # Lazy load transcriber on first use
+            if self.transcriber is None:
+                self.transcriber = SileroTranscriber()
+                self.audio_processor = AudioProcessor(transcriber=self.transcriber)
+
             if not self.text_data_json:
                 raise ValueError("Invalid audio data format")
             chunk = AudioChunk.from_dict(self.text_data_json)

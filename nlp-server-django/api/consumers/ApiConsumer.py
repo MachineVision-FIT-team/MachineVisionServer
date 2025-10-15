@@ -4,6 +4,7 @@ from channels.layers import get_channel_layer
 import logging
 from channels.exceptions import DenyConnection, StopConsumer
 import redis.asyncio as redis
+import os
 from ..websocket_handling.ConsumerHandler import WebsocketConsumerHandler
 
 """TODO: EXTRACT A REDIS MANAGER CLASS WHICH POOLS CONNECTIONS AND RUNS SETUP"""
@@ -43,7 +44,8 @@ class ApiConsumer(AsyncWebsocketConsumer):
         self.message_type = self.text_data_json.get("type")
 
     async def initialize_redis(self):
-        self.redis_client = redis.from_url("redis://localhost", decode_responses=True)
+        redis_url = os.environ.get("REDIS_URL", "redis://redis:6379")
+        self.redis_client = redis.from_url(redis_url, decode_responses=True)
         self.channel_layer = get_channel_layer()
 
         if not self.channel_layer:

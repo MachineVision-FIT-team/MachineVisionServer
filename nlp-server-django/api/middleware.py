@@ -2,7 +2,7 @@ from channels.middleware import BaseMiddleware
 from channels.db import database_sync_to_async
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from .models import ApiKey
 from .websocket_handling.handler import WebSocketConnectionHandler
 
@@ -10,6 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 class ApiKeyValidationMiddleware(BaseMiddleware):
+    """Validates API keys from WebSocket protocol header"""
+
     async def __call__(self, scope: Dict[str, Any], receive: Any, send: Any) -> Any:
         try:
             headers = dict(scope["headers"])
@@ -19,43 +21,50 @@ class ApiKeyValidationMiddleware(BaseMiddleware):
             api_key = self._extract_api_key(authorization_header)
 
             if not api_key:
+                logger.warning("No API key provided in connection attempt")
                 await WebSocketConnectionHandler.reject_invalid_api_key(send)
                 return
 
             auth_result = await self._validate_api_key(api_key, send)
             if not auth_result:
+                logger.warning(f"API key validation failed for key: {api_key[:8]}...")
                 return
 
             scope["auth_type"] = auth_result["type"]
             scope["auth_object"] = auth_result["object"]
+            logger.info(f"Authenticated {auth_result['type']}: {auth_result['object']}")
             return await super().__call__(scope, receive, send)
 
         except Exception as e:
-            logger.error(f"API key validation error: {str(e)}")
+            logger.error(f"API key validation error: {str(e)}", exc_info=True)
             await WebSocketConnectionHandler.reject_invalid_api_key(send)
             return
 
     def _extract_header(self, headers: dict, header_name: str) -> str:
+        """Extract header value from WebSocket headers"""
         return headers.get(header_name.encode(), b"").decode("utf-8")
 
-    def _extract_api_key(self, header: str) -> str:
+    def _extract_api_key(self, header: str) -> Optional[str]:
+        """Extract API key from authorization header (supports Bearer token or raw key)"""
         if not header:
             return None
 
-        # Split header into parts and validate format
         parts = header.strip().split()
 
-        # Check if it's a Bearer token
+        # Bearer token format
         if len(parts) == 2 and parts[0].lower() == "bearer":
             return parts[1]
-        # Check if it's a single token (backwards compatibility)
+
+        # Raw key format
         if len(parts) == 1 and parts[0]:
             return parts[0]
 
         return None
 
-    async def _validate_api_key(self, api_key: str, send: Any) -> Dict[str, Any] | None:
-        """Validate the API key and handle validation errors."""
+    async def _validate_api_key(
+        self, api_key: str, send: Any
+    ) -> Optional[Dict[str, Any]]:
+        """Validate API key against database"""
         try:
             auth_result = await self._find_api_key(api_key)
             if auth_result["type"] == "error":
@@ -63,13 +72,14 @@ class ApiKeyValidationMiddleware(BaseMiddleware):
                 return None
             return auth_result
 
-        except ValidationError:
+        except ValidationError as e:
+            logger.warning(f"Malformed API key: {str(e)}")
             await WebSocketConnectionHandler.reject_malformed_api_key(send)
             return None
 
     @database_sync_to_async
     def _find_api_key(self, key: str) -> Dict[str, Any]:
-        """Finds and validates an API key across all APIKey subclasses."""
+        """Find and validate API key across all ApiKey subclasses"""
         try:
             for model in ApiKey.get_all_subclasses():
                 try:
@@ -79,18 +89,21 @@ class ApiKeyValidationMiddleware(BaseMiddleware):
                     continue
             return {"type": "error", "object": None}
         except ValidationError:
-            # Re-raise the ValidationError to be caught in __call__
             raise
 
 
 class InvalidRouteErrorMiddleware(BaseMiddleware):
-    """Middleware that handles websocket routing errors by sending a custom close code 4001 when an invalid route is accessed."""
+    """Handles WebSocket routing errors with custom close codes"""
 
     async def __call__(self, scope, receive, send):
         try:
             await super().__call__(scope, receive, send)
         except ValueError as e:
             if "No route found" in str(e):
+                logger.warning(
+                    f"Invalid WebSocket route attempted: {scope.get('path', 'unknown')}"
+                )
                 await WebSocketConnectionHandler.reject_invalid_route(send)
-                logger.error(f"Unexpected ValueError: {str(e)}")
-                raise e
+            else:
+                logger.error(f"WebSocket routing error: {str(e)}", exc_info=True)
+            raise
