@@ -2,9 +2,9 @@ from django.apps import AppConfig
 
 
 class MachinesConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'machines'
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "machines"
 
     def ready(self):
         # Import signal handlers
-        import machines.signals
+        import machines.signals  # noqa: F401
