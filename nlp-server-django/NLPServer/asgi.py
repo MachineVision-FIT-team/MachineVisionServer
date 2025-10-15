@@ -1,10 +1,8 @@
 """
 ASGI config for NLPServer project.
 
-It exposes the ASGI callable as a module-level variable named ``application``.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/5.0/howto/deployment/asgi/
+Exposes the ASGI application for production deployment.
+Handles both HTTP and WebSocket protocols with custom middleware.
 """
 
 import os
@@ -12,19 +10,20 @@ from django.core.asgi import get_asgi_application
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "NLPServer.settings")
 
-# Initialize Django ASGI application early to ensure the AppRegistry
-# is populated before importing code that may import ORM models.
+# Initialize Django ASGI application early to populate AppRegistry
 django_asgi_app = get_asgi_application()
 
-# Now import your routing and middleware AFTER Django is initialized
+# Import after Django initialization to avoid AppRegistryNotReady errors
 from channels.routing import ProtocolTypeRouter, URLRouter
+from django.contrib.staticfiles.handlers import ASGIStaticFilesHandler
 import api.routing
 from api.middleware import ApiKeyValidationMiddleware, InvalidRouteErrorMiddleware
-from django.contrib.staticfiles.handlers import ASGIStaticFilesHandler
 
 application = ProtocolTypeRouter(
     {
-        "http": ASGIStaticFilesHandler(django_asgi_app),  # Wrap with static handler
+        # HTTP requests with static file handling
+        "http": ASGIStaticFilesHandler(django_asgi_app),
+        # WebSocket connections with authentication and error handling
         "websocket": InvalidRouteErrorMiddleware(
             ApiKeyValidationMiddleware(URLRouter(api.routing.websocket_urlpatterns))
         ),
