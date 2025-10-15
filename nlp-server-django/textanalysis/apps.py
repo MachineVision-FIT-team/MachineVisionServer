@@ -1,6 +1,7 @@
 from django.apps import AppConfig
 
 
-class TextanalysisConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'textanalysis'
+class TextAnalysisConfig(AppConfig):
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "textanalysis"
+    verbose_name = "Text Analysis"
