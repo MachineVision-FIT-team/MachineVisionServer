@@ -1,6 +1,6 @@
 from enum import Enum
-from typing import Optional
 import logging
+from typing import Dict, Type
 
 
 class ErrorCategory(Enum):
@@ -16,13 +16,15 @@ class ErrorCategory(Enum):
 class ClientError:
     """Handles error messages that are safe to send to clients"""
 
-    # Map internal errors to user-friendly messages
-    ERROR_MESSAGES = {
+    ERROR_MESSAGES: Dict[Type[Exception], tuple[ErrorCategory, str]] = {
         ConnectionError: (
             ErrorCategory.CONNECTION_ERROR,
             "Unable to establish connection. Please try again.",
         ),
-        ValueError: (ErrorCategory.VALIDATION_ERROR, "Invalid input provided."),
+        ValueError: (
+            ErrorCategory.VALIDATION_ERROR,
+            "Invalid input provided.",
+        ),
         PermissionError: (
             ErrorCategory.AUTHENTICATION_ERROR,
             "You don't have permission to perform this action.",
@@ -31,24 +33,26 @@ class ClientError:
             ErrorCategory.RESOURCE_ERROR,
             "The requested resource is currently unavailable.",
         ),
+        KeyError: (
+            ErrorCategory.VALIDATION_ERROR,
+            "Required field missing.",
+        ),
     }
 
     @staticmethod
     def handle_error(error: Exception, logger: logging.Logger) -> dict:
         """
-        Converts internal errors to client-safe messages while logging the full error details
+        Convert internal errors to client-safe messages
 
         Args:
             error: The caught exception
-            logger: Logger instance for recording full error details
+            logger: Logger instance for recording error details
 
         Returns:
             Dict containing safe error message for client
         """
-        # Log the full error for debugging
-        logger.error(f"Internal error: {str(error)}", exc_info=True)
+        logger.error(f"Error: {type(error).__name__}: {str(error)}", exc_info=True)
 
-        # Get the appropriate error category and message
         error_category, message = ClientError.ERROR_MESSAGES.get(
             type(error),
             (
@@ -61,5 +65,4 @@ class ClientError:
             "type": "error",
             "category": error_category.value,
             "message": message,
-            "code": hash(str(error)) % 1000000,  # Generate a traceable error code
         }

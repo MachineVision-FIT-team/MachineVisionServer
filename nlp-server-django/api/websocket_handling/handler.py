@@ -1,76 +1,72 @@
 import json
-from typing import Any, Optional, Dict
+from typing import Any, Optional
 import logging
-from .codes import WebSocketCloseCodes
+from .codes import WebSocketCloseCodes, WebSocketCloseReasons
 
 logger = logging.getLogger(__name__)
 
 
 class WebSocketConnectionHandler:
-    """Manages WebSocket connection operations and states."""
+    """Manages WebSocket connection operations and responses"""
 
     @staticmethod
     async def accept(send: Any, subprotocols: Optional[list] = None) -> None:
-        """Accepts a WebSocket connection with optional subprotocols."""
+        """Accept WebSocket connection with optional subprotocols"""
         message = {"type": "websocket.accept"}
         if subprotocols:
             message["subprotocol"] = subprotocols[0]
         await send(message)
 
     @staticmethod
-    async def send_json_message(send: Any, **message_data) -> None:
-        """Sends any JSON-serializable data through WebSocket."""
-        await send(text_data=json.dumps(message_data))
+    async def send_json_message(consumer: Any, **message_data) -> None:
+        """Send JSON message through consumer"""
+        await consumer.send(text_data=json.dumps(message_data))
 
     @staticmethod
-    async def close(send: Any, code: WebSocketCloseCodes, reason: str) -> None:
-        """
-        Cleanly closes an already accepted WebSocket connection.
-        """
+    async def close(send: Any, code: WebSocketCloseCodes, reason: str = None) -> None:
+        """Close accepted WebSocket connection with code and reason"""
         try:
-            await send({"type": "websocket.close", "code": int(code), "reason": reason})
+            print("REASON: ", reason)
+            if reason is None:
+                reason = WebSocketCloseReasons.get_reason(code)
+            await send(
+                {
+                    "type": "websocket.close",
+                    "code": int(code),
+                    "reason": reason,
+                }
+            )
         except Exception as e:
-            logger.error(f"Error closing WebSocket connection: {str(e)}")
+            logger.error(f"Error closing WebSocket: {str(e)}")
             raise
 
     @staticmethod
-    async def reject(send: Any, code: WebSocketCloseCodes, reason: str) -> None:
-        """
-        Rejects a connection by accepting first then closing with specific code.
-        """
+    async def reject(send: Any, code: WebSocketCloseCodes, reason: str = None) -> None:
+        """Reject connection by accepting then immediately closing"""
         try:
+            if reason is None:
+                reason = WebSocketCloseReasons.get_reason(code)
             await WebSocketConnectionHandler.accept(send)
             await WebSocketConnectionHandler.close(send, code, reason)
         except Exception as e:
-            logger.error(f"Error rejecting WebSocket connection: {str(e)}")
+            logger.error(f"Error rejecting WebSocket: {str(e)}")
             raise
 
     @staticmethod
-    async def reject_unauthorized(send: Any) -> None:
-        """Rejects unauthorized connection attempts."""
-        await WebSocketConnectionHandler.reject(
-            send, WebSocketCloseCodes.UNAUTHORIZED, "Unauthorized connection attempt"
-        )
-
-    @staticmethod
     async def reject_invalid_route(send: Any) -> None:
-        """Rejects invalid route access attempts."""
-        await WebSocketConnectionHandler.reject(
-            send, WebSocketCloseCodes.INVALID_ROUTE, "Invalid route accessed"
-        )
+        """Reject invalid route access"""
+        await WebSocketConnectionHandler.reject(send, WebSocketCloseCodes.INVALID_ROUTE)
 
     @staticmethod
     async def reject_invalid_api_key(send: Any) -> None:
-        """Rejects connections with invalid API keys."""
+        """Reject invalid or inactive API key"""
         await WebSocketConnectionHandler.reject(
-            send, WebSocketCloseCodes.INVALID_API_KEY, "Invalid API key provided"
+            send, WebSocketCloseCodes.INVALID_API_KEY
         )
 
     @staticmethod
     async def reject_malformed_api_key(send: Any) -> None:
-        """Rejects connection due to malformed API key format."""
+        """Reject malformed API key format"""
         await WebSocketConnectionHandler.reject(
-            send,
-            WebSocketCloseCodes.MALFORMED_API_KEY,
-            "Malformed API key format",
+            send, WebSocketCloseCodes.MALFORMED_API_KEY
         )

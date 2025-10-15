@@ -131,4 +131,9 @@ Two types of API keys inherit from an abstract base:
 - `routing.py` - WebSocket URL patterns
 - `apps.py` - App configuration and spaCy initialization
 - `middleware.py` - Authentication and validation (see [Middleware](middleware.md))
+- `websocket_handling/` - Connection handlers and room management
+  - `handler.py` - WebSocket connection lifecycle (see [WebSocket Handling](websocket-handling.md))
+  - `codes.py` - Close codes and reasons
+  - `RoomManager.py` - Redis room management (see [Room Management](room-management.md))
+  - `error_handler.py` - Client-safe error handling
 - `consumers/` - WebSocket connection handlers (see [Consumers](consumers.md))

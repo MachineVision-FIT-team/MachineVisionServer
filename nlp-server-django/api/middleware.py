@@ -35,7 +35,7 @@ class ApiKeyValidationMiddleware(BaseMiddleware):
             logger.info(f"Authenticated {auth_result['type']}: {auth_result['object']}")
             return await super().__call__(scope, receive, send)
 
-        except Exception as e:
+        except ValidationError as e:
             logger.error(f"API key validation error: {str(e)}", exc_info=True)
             await WebSocketConnectionHandler.reject_invalid_api_key(send)
             return
@@ -106,4 +106,4 @@ class InvalidRouteErrorMiddleware(BaseMiddleware):
                 await WebSocketConnectionHandler.reject_invalid_route(send)
             else:
                 logger.error(f"WebSocket routing error: {str(e)}", exc_info=True)
-            raise
+                raise
