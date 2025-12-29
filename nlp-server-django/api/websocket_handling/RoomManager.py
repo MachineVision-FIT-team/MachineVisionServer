@@ -39,8 +39,15 @@ class RoomManager:
     async def can_join_room(self, machine_key: str, channel_name: str) -> bool:
         """Check if channel can join room"""
         room_members = await self.get_room_members(machine_key)
-        # Allow if room is empty or member already in room
-        return len(room_members) == 0 or channel_name in room_members
+        # Allow if:
+        # 1. Room is empty (first connection)
+        # 2. Member is already in room (reconnection)
+        # 3. Room has exactly 1 member (machine connected, user can join)
+        return (
+            len(room_members) == 0
+            or channel_name in room_members
+            or len(room_members) == 1
+        )
 
     async def clear_member_from_all_rooms(self, channel_name: str) -> None:
         """Remove member from all their active rooms"""
